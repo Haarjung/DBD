@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>До дембеля</title>
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--text:#1f2a1c;--muted:#6b7566;--accent:#4b5d2a;--track:#e2ded2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a12;--card:#1e271b;--text:#eef2e8;--muted:#9aa693;--accent:#a3b86c;--track:#2c3828}}
+:root[data-theme="dark"]{--bg:#141a12;--card:#1e271b;--text:#eef2e8;--muted:#9aa693;--accent:#a3b86c;--track:#2c3828}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:420px;margin:0 auto;padding:24px 20px}
+.card{background:var(--card);border-radius:24px;padding:32px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:18px;font-weight:600;margin:0 0 4px;color:var(--muted)}
+.num{font-size:96px;font-weight:800;line-height:1;color:var(--accent);margin:16px 0 4px}
+.unit{font-size:22px;margin-bottom:24px}
+.track{height:12px;background:var(--track);border-radius:6px;overflow:hidden}
+.bar{height:100%;background:var(--accent);width:0;transition:width .6s}
+.pct{font-size:14px;color:var(--muted);margin-top:8px}
+.sub{font-size:14px;color:var(--muted);margin-top:16px}
+button{margin-top:20px;background:none;border:1px solid var(--muted);color:var(--text);border-radius:12px;padding:10px 18px;font-size:15px}
+.edit{margin-top:20px;background:var(--card);border-radius:20px;padding:20px;display:none}
+.edit label{display:block;font-size:14px;color:var(--muted);margin:12px 0 4px}
+.edit input{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border-radius:10px;border:1px solid var(--track);background:var(--bg);color:var(--text)}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1 id="title">До дембеля</h1>
+    <div class="num" id="num">—</div>
+    <div class="unit" id="unit">дней</div>
+    <div class="track"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct"></div>
+    <div class="sub" id="sub"></div>
+    <button id="toggle">Настроить</button>
+  </div>
+  <div class="edit" id="edit">
+    <label>Имя друга</label><input id="name" type="text" placeholder="Например, Саня">
+    <label>Дата начала службы</label><input id="start" type="date">
+    <label>Дата дембеля</label><input id="end" type="date">
+    <button id="save">Сохранить</button>
+  </div>
+</main>
+<script>
+const KEY = "dembel-v1";
+const $ = id => document.getElementById(id);
+let data = { name: "", start: "", end: "" };
+try { const s = localStorage.getItem(KEY); if (s) data = JSON.parse(s); } catch (e) {}
+
+function toDate(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+function plural(n) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return "дней";
+  if (b === 1) return "день";
+  if (b >= 2 && b <= 4) return "дня";
+  return "дней";
+}
+function render() {
+  $("name").value = data.name || ""; $("start").value = data.start || ""; $("end").value = data.end || "";
+  $("title").textContent = data.name ? "До дембеля — " + data.name : "До дембеля";
+  if (!data.end) { $("num").textContent = "—"; $("unit").textContent = "задай дату в настройках"; $("bar").style.width = "0"; $("pct").textContent = ""; $("sub").textContent = ""; return; }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const end = toDate(data.end);
+  const left = Math.round((end - today) / 86400000);
+  if (left <= 0) { $("num").textContent = "🎉"; $("unit").textContent = "Дембель наступил!"; $("bar").style.width = "100%"; $("pct").textContent = "100%"; $("sub").textContent = ""; return; }
+  $("num").textContent = left;
+  $("unit").textContent = plural(left) + " осталось";
+  if (data.start) {
+    const total = Math.round((end - toDate(data.start)) / 86400000);
+    const p = Math.max(0, Math.min(100, Math.round((1 - left / total) * 100)));
+    $("bar").style.width = p + "%";
+    $("pct").textContent = "Пройдено " + p + "% службы";
+  } else { $("bar").style.width = "0"; $("pct").textContent = ""; }
+  $("sub").textContent = "Дембель: " + end.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+}
+$("toggle").onclick = () => { const e = $("edit"); e.style.display = e.style.display === "block" ? "none" : "block"; };
+$("save").onclick = () => {
+  data = { name: $("name").value.trim(), start: $("start").value, end: $("end").value };
+  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+  $("edit").style.display = "none"; render();
+};
+render();
+</script>
+</body>
+</html>
